@@ -123,9 +123,8 @@ public class ExcelExportService : IExcelExportService
             decimal debitoFiscal = ventas.Sum(v => v.Impuesto);
 
             decimal totalCompras = compras.Sum(c => c.Total);
-            decimal baseCreditoFiscal = totalCompras > 0 ? Math.Round(totalCompras / 1.13m, 2) : 0.00m;
-            decimal creditoFiscal = totalCompras - baseCreditoFiscal;
-            decimal balanceIva = debitoFiscal - creditoFiscal;
+            var (baseCreditoFiscal, creditoFiscal) = totalCompras > 0 ? FinancialRoundingHelper.DesglosarIvaIncluido(totalCompras) : (0.00m, 0.00m);
+            decimal balanceIva = FinancialRoundingHelper.Round2(debitoFiscal - creditoFiscal);
 
             using var workbook = new XLWorkbook();
 
@@ -374,8 +373,7 @@ public class ExcelExportService : IExcelExportService
             int numItemC = 1;
             foreach (var c in compras)
             {
-                decimal baseComp = c.Total > 0 ? Math.Round(c.Total / 1.13m, 2) : 0.00m;
-                decimal ivaComp = c.Total - baseComp;
+                var (baseComp, ivaComp) = c.Total > 0 ? FinancialRoundingHelper.DesglosarIvaIncluido(c.Total) : (0.00m, 0.00m);
 
                 wsCompras.Cell(filaC, 1).Value = numItemC++;
                 wsCompras.Cell(filaC, 2).Value = c.FechaHora.ToString("dd/MM/yyyy HH:mm");
@@ -1066,18 +1064,18 @@ public class ExcelExportService : IExcelExportService
             string presentacion = colPresentacion >= 0 ? GetCol(colPresentacion) : "Unidad";
             if (string.IsNullOrWhiteSpace(presentacion)) presentacion = "Unidad";
 
-            decimal costo = ParsearDecimalSeguro(GetCol(colCosto), 0.00m);
-            decimal precioVenta = ParsearDecimalSeguro(GetCol(colPrecioVenta), 0.00m);
+            decimal costo = FinancialRoundingHelper.Round4(ParsearDecimalSeguro(GetCol(colCosto), 0.00m));
+            decimal precioVenta = FinancialRoundingHelper.Round4(ParsearDecimalSeguro(GetCol(colPrecioVenta), 0.00m));
             decimal? precioGranel = null;
             if (colPrecioGranel >= 0)
             {
-                decimal pg = ParsearDecimalSeguro(GetCol(colPrecioGranel), 0.00m);
+                decimal pg = FinancialRoundingHelper.Round4(ParsearDecimalSeguro(GetCol(colPrecioGranel), 0.00m));
                 if (pg > 0) precioGranel = pg;
             }
 
-            decimal stock = ParsearDecimalSeguro(GetCol(colStock), 0m);
-            decimal stockMinimo = ParsearDecimalSeguro(GetCol(colStockMinimo), 5m);
-            decimal margenExcepcion = ParsearDecimalSeguro(GetCol(colMargenExcepcion), 0.00m);
+            decimal stock = FinancialRoundingHelper.Round3(ParsearDecimalSeguro(GetCol(colStock), 0m));
+            decimal stockMinimo = FinancialRoundingHelper.Round3(ParsearDecimalSeguro(GetCol(colStockMinimo), 5m));
+            decimal margenExcepcion = FinancialRoundingHelper.Round2(ParsearDecimalSeguro(GetCol(colMargenExcepcion), 0.00m));
 
             result.TotalProcesados++;
 
@@ -1114,7 +1112,7 @@ public class ExcelExportService : IExcelExportService
             decimal? costoGranel = null;
             if (cantEmpaque > 1 && costo > 0)
             {
-                costoGranel = Math.Round(costo / cantEmpaque, 4);
+                costoGranel = FinancialRoundingHelper.Round4(costo / cantEmpaque);
             }
 
             // Si el precio de venta es menor al costo del empaque (ej: 0.12 vs 4.57), es el precio de venta unitario/granel
@@ -1124,7 +1122,7 @@ public class ExcelExportService : IExcelExportService
                 {
                     precioGranel = precioVenta;
                 }
-                precioVenta = Math.Round(precioVenta * cantEmpaque, 2);
+                precioVenta = FinancialRoundingHelper.Round4(precioVenta * cantEmpaque);
             }
 
             bool esGranel = (precioGranel.HasValue && precioGranel.Value > 0) || cantEmpaque > 1;

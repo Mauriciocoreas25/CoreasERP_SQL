@@ -84,8 +84,11 @@
 
             @if (CorteActivo != null)
             {
-                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-semibold d-none d-md-inline-block" style="font-size: 11px;" title="Turno de caja abierto">
-                    ● Turno #@CorteActivo.IdCorte
+                <span class="badge px-2.5 py-1 fw-bold d-none d-md-inline-flex align-items-center gap-1 shadow-sm" 
+                      style="background-color: #dcfce7 !important; color: #14532d !important; border: 1.5px solid #86efac !important; font-size: 11.5px;" 
+                      title="Turno de caja abierto">
+                    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: #16a34a;"></span>
+                    <span>Turno #@CorteActivo.IdCorte</span>
                 </span>
             }
             else
@@ -183,7 +186,8 @@
                                         </div>
                                         @if (item.EsGranel)
                                         {
-                                            <span class="badge bg-success bg-opacity-25 text-success border border-success px-1" style="font-size: 9.5px;">
+                                            <span class="badge px-2 py-0.5 fw-bold shadow-sm" 
+                                                  style="background-color: #dcfce7 !important; color: #14532d !important; border: 1px solid #86efac !important; font-size: 9.5px;">
                                                 @(item.UnidadMedida == "Libra" ? "lb" : (item.UnidadMedida == "Kilogramo" ? "kg" : (item.UnidadMedida == "Gramo" ? "g" : (item.UnidadMedida == "Caja" ? "CAJA" : (item.UnidadMedida == "Sobre" ? "SOBRE" : "GRANEL")))))
                                             </span>
                                         }
@@ -294,7 +298,8 @@
                                         </div>
                                     }
                                     <div class="mt-1 d-flex align-items-center gap-2">
-                                        <span class="badge @(ProductoEnEdicion.Stock > 5 ? "bg-success bg-opacity-10 text-success border border-success border-opacity-25" : "bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25")" style="font-size: 10px;">
+                                        <span class="badge fw-bold shadow-sm" 
+                                              style="font-size: 10.5px; background-color: @(ProductoEnEdicion.Stock > 5 ? "#dcfce7" : "#fef9c3") !important; color: @(ProductoEnEdicion.Stock > 5 ? "#14532d" : "#854d0e") !important; border: 1px solid @(ProductoEnEdicion.Stock > 5 ? "#86efac" : "#fde047") !important;">
                                             Stock disponible: @ProductoEnEdicion.Stock.ToString("G29") @(ProductoEnEdicion.EsGranel ? ProductoEnEdicion.UnidadMedida : "uds")
                                             @if (ProductoEnEdicion.CantidadPorEmpaque.HasValue && ProductoEnEdicion.CantidadPorEmpaque.Value > 1)
                                             {
@@ -488,6 +493,103 @@
 
 <!-- Diálogo de Cobro y Métodos de Pago (F10) -->
 <PaymentDialog @ref="paymentDialogRef" @bind-IsOpen="isPaymentOpen" Total="@TotalCarrito" EsAnticipo="@(TipoComprobante.Equals("Anticipo", StringComparison.OrdinalIgnoreCase))" OnConfirm="ProcesarCobro" />
+
+<!-- Modal de Animación y Confirmación de Cambio a Devolver (3 segundos después de imprimir ticket) -->
+@if (isCambioModalOpen && UltimaVentaRegistrada != null)
+{
+    <div class="modal-backdrop-custom d-flex align-items-center justify-content-center" 
+         tabindex="0" 
+         style="z-index: 1200; background-color: rgba(15, 23, 42, 0.75);" 
+         @onkeydown="HandleCambioKeyDown" 
+         @onclick="CerrarModalCambio">
+        <div class="modal-content-custom shadow-lg text-center" 
+             style="max-width: 480px; width: 92%; border-radius: 16px; overflow: hidden; border: 3px solid #16a34a; background-color: #ffffff; animation: cambioPop 0.25s ease-out;" 
+             @onclick:stopPropagation="true">
+            
+            <!-- Encabezado de Éxito -->
+            <div class="p-4" style="background: linear-gradient(135deg, #15803d 0%, #166534 100%); color: white;">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" 
+                     style="width: 60px; height: 60px; background-color: rgba(255, 255, 255, 0.2); border: 2.5px solid #86efac;">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-0 text-white">¡Cobro y Emisión Finalizados!</h4>
+                <div class="small text-white-50 mt-1">Ticket / Comprobante: @UltimaVentaRegistrada.NumComprobante (@UltimaVentaRegistrada.TipoComprobante)</div>
+            </div>
+
+            <!-- Cuerpo con CAMBIO A DEVOLVER PROMINENTE -->
+            <div class="p-4">
+                @if (UltimaVentaRegistrada.MetodoPago == "Efectivo")
+                {
+                    @if ((UltimaVentaRegistrada.Cambio ?? 0m) > 0m)
+                    {
+                        <div class="p-3 rounded-3 mb-3 shadow-sm" style="background-color: #dcfce7 !important; border: 2.5px solid #22c55e !important;">
+                            <div class="text-uppercase fw-bold" style="color: #14532d; font-size: 13px; letter-spacing: 1px;">
+                                CAMBIO A ENTREGAR AL CLIENTE
+                            </div>
+                            <div class="font-monospace fw-bolder my-1" style="font-size: 3.4rem; color: #14532d !important; line-height: 1.1;">
+                                $@(UltimaVentaRegistrada.Cambio?.ToString("F2") ?? "0.00")
+                            </div>
+                            <div class="fw-semibold" style="font-size: 13px; color: #166534;">
+                                Cliente pagó con: $@(UltimaVentaRegistrada.PagoCon?.ToString("F2") ?? "0.00") &bull; Total: $@UltimaVentaRegistrada.Total.ToString("F2")
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 rounded-3 mb-3 shadow-sm" style="background-color: #f0fdf4 !important; border: 2.5px solid #16a34a !important;">
+                            <div class="text-uppercase fw-bold" style="color: #14532d; font-size: 13px; letter-spacing: 1px;">
+                                PAGO EXACTO EN EFECTIVO
+                            </div>
+                            <div class="font-monospace fw-bolder my-1" style="font-size: 3rem; color: #14532d !important; line-height: 1.1;">
+                                CAMBIO: $0.00
+                            </div>
+                            <div class="fw-semibold" style="font-size: 13px; color: #166534;">
+                                Total recibido: $@UltimaVentaRegistrada.Total.ToString("F2") (Sin vuelto)
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="p-3 rounded-3 mb-3 shadow-sm" style="background-color: #f0fdf4 !important; border: 2px solid #86efac !important;">
+                        <div class="text-uppercase fw-bold" style="color: #14532d; font-size: 13px;">
+                            PAGO REGISTRADO (@UltimaVentaRegistrada.MetodoPago.ToUpper())
+                        </div>
+                        <div class="font-monospace fw-bolder my-1" style="font-size: 2.8rem; color: #15803d;">
+                            $@UltimaVentaRegistrada.Total.ToString("F2")
+                        </div>
+                        <div class="text-muted small">Transacción autorizada y cobrada exitosamente</div>
+                    </div>
+                }
+
+                <!-- Barra de cuenta regresiva de 3 segundos -->
+                <div class="mb-3">
+                    <div class="progress" style="height: 6px; background-color: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             style="width: 100%; background-color: #16a34a; animation: shrinkWidth 3s linear forwards;">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 text-muted" style="font-size: 11.5px;">
+                        <span>Listo para nueva venta en <strong>@cambioCountdownSeconds s</strong>...</span>
+                        <span>Presione <strong>Enter</strong> para continuar ya</span>
+                    </div>
+                </div>
+
+                <!-- Botón de acción para el cajero con foco automático y enter -->
+                <button @ref="btnCambioContinuarRef"
+                        type="button" 
+                        class="btn btn-success w-100 py-2.5 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2"
+                        style="background-color: #15803d; border-color: #15803d; font-size: 15px;"
+                        @onclick="CerrarModalCambio">
+                    <span>Listo / Nueva Venta</span>
+                    <span class="badge bg-dark bg-opacity-25 text-white" style="font-size: 11px;">[Enter]</span>
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- Visualizador y Emisión de Ticket Térmico -->
 <TicketPreviewDialog @ref="ticketPreviewDialogRef" @bind-IsOpen="isTicketOpen" Venta="@UltimaVentaRegistrada" OnVerCarta="AbrirDocumentoCarta" OnNuevaVenta="NuevaVenta" />
@@ -916,7 +1018,7 @@
     private List<Cliente> Clientes = new();
     private int SelectedClienteId = 1; // 1 = Cliente Mostrador / Consumidor Final
     private List<CartItemDto> Carrito = new();
-    private decimal TotalCarrito => Carrito.Sum(i => i.Subtotal);
+    private decimal TotalCarrito => FinancialRoundingHelper.Round2(Carrito.Sum(i => i.Subtotal));
 
     // Fila de Captura Activa
     private ElementReference inputUpcRef;
@@ -952,6 +1054,10 @@
     private TicketPreviewDialog? ticketPreviewDialogRef;
     private bool isProductSearchOpen = false;
     private bool isPaymentOpen = false;
+    private bool isCambioModalOpen = false;
+    private int cambioCountdownSeconds = 3;
+    private CancellationTokenSource? cambioCts;
+    private ElementReference btnCambioContinuarRef;
     private bool isTicketOpen = false;
     private bool isInvoiceLetterOpen = false;
     private bool isQuickCustomerOpen = false;
@@ -1005,6 +1111,7 @@
         KeyboardBridgeService.OnFunctionKeyPressed += HandleBridgeFunctionKey;
         KeyboardBridgeService.OnShortcutPressed += HandleBridgeShortcut;
         KeyboardBridgeService.OnSpacePressed += HandleBridgeSpace;
+        KeyboardBridgeService.OnEnterPressed += HandleBridgeEnter;
         KeyboardBridgeService.OnBarcodeScanned += HandleBridgeBarcode;
 
         try
@@ -1026,13 +1133,25 @@
         {
             await EnfocarUpcAsync();
         }
+
+        if (isCambioModalOpen)
+        {
+            try
+            {
+                await Task.Delay(50);
+                await btnCambioContinuarRef.FocusAsync();
+            }
+            catch { }
+        }
     }
 
     public void Dispose()
     {
+        try { cambioCts?.Cancel(); cambioCts?.Dispose(); } catch { }
         KeyboardBridgeService.OnFunctionKeyPressed -= HandleBridgeFunctionKey;
         KeyboardBridgeService.OnShortcutPressed -= HandleBridgeShortcut;
         KeyboardBridgeService.OnSpacePressed -= HandleBridgeSpace;
+        KeyboardBridgeService.OnEnterPressed -= HandleBridgeEnter;
         KeyboardBridgeService.OnBarcodeScanned -= HandleBridgeBarcode;
     }
 
@@ -1069,6 +1188,11 @@
     {
         InvokeAsync(async () =>
         {
+            if (isCambioModalOpen)
+            {
+                await CerrarModalCambio();
+                return;
+            }
             if (fNum >= 1 && fNum <= 9)
             {
                 SeleccionarComprobante(fNum - 1);
@@ -1128,12 +1252,28 @@
 
     private void HandleBridgeSpace()
     {
-        InvokeAsync(() =>
+        InvokeAsync(async () =>
         {
+            if (isCambioModalOpen)
+            {
+                await CerrarModalCambio();
+                return;
+            }
             if (!isProductSearchOpen && !isPaymentOpen && !isTicketOpen && ProductoEnEdicion == null)
             {
                 isProductSearchOpen = true;
                 StateHasChanged();
+            }
+        });
+    }
+
+    private void HandleBridgeEnter()
+    {
+        InvokeAsync(async () =>
+        {
+            if (isCambioModalOpen)
+            {
+                await CerrarModalCambio();
             }
         });
     }
@@ -1555,8 +1695,11 @@
                 CantidadEnEdicion = null;
                 UpcInputValue = "";
 
-                // Si es Ticket de venta retail rápida, abrir ticket térmico.
-                // Si es Factura, CCF (03), Nota de Remisión, Crédito, Débito, etc., abrir Formato Carta Oficial (PDF / Impresora Carta)
+                // Actualizar historial y turno
+                await CargarCatalogos();
+                await CargarTurnoCaja();
+
+                // Abrir directamente la previsualización / impresión de comprobante (ticket o carta)
                 bool esTicketRetail = TipoComprobante.Equals("Ticket", StringComparison.OrdinalIgnoreCase);
                 if (esTicketRetail)
                 {
@@ -1566,10 +1709,6 @@
                 {
                     isInvoiceLetterOpen = true;
                 }
-
-                // Actualizar historial y turno
-                await CargarCatalogos();
-                await CargarTurnoCaja();
             }
             else
             {
@@ -1583,6 +1722,57 @@
         finally
         {
             isProcessingPayment = false;
+        }
+    }
+
+    private async Task MostrarPantallaCambioAsync(Venta venta)
+    {
+        isCambioModalOpen = true;
+        cambioCountdownSeconds = 3;
+        StateHasChanged();
+
+        cambioCts?.Cancel();
+        cambioCts = new CancellationTokenSource();
+        var token = cambioCts.Token;
+
+        try
+        {
+            for (int i = 3; i > 0; i--)
+            {
+                cambioCountdownSeconds = i;
+                StateHasChanged();
+                await Task.Delay(1000, token);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Cancelado por interacción rápida del cajero (Enter/Espacio/Esc/Clic)
+        }
+        finally
+        {
+            await CerrarModalCambio();
+        }
+    }
+
+    private async Task CerrarModalCambio()
+    {
+        if (!isCambioModalOpen) return;
+        isCambioModalOpen = false;
+        try
+        {
+            cambioCts?.Cancel();
+            cambioCts = null;
+        }
+        catch { }
+        StateHasChanged();
+        await EnfocarUpcAsync();
+    }
+
+    private async Task HandleCambioKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " " || e.Key == "Escape")
+        {
+            await CerrarModalCambio();
         }
     }
 
@@ -1613,7 +1803,15 @@
         isInvoiceLetterOpen = false;
         StateHasChanged();
 
-        await EnfocarUpcAsync();
+        // Si la venta fue en efectivo, mostrar la pantalla de cambio durante 3 segundos mientras el cajero entrega el dinero
+        if (UltimaVentaRegistrada != null && UltimaVentaRegistrada.MetodoPago == "Efectivo")
+        {
+            await MostrarPantallaCambioAsync(UltimaVentaRegistrada);
+        }
+        else
+        {
+            await EnfocarUpcAsync();
+        }
     }
 
     // =========================================================================

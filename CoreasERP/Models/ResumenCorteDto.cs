@@ -1,3 +1,5 @@
+using CoreasERP.Services;
+
 namespace CoreasERP.Models;
 
 public class DesgloseDenominacionDto
@@ -65,7 +67,7 @@ public class ResumenCorteDto
     public List<ItemTipoDocumentoCorteDto> Documentos { get; set; } = new();
 
     public int TotalDocumentosEmitidos => Documentos.Where(d => !d.EsInformativo).Sum(d => d.Cantidad);
-    public decimal TotalFacturadoNeto => Documentos.Where(d => !d.EsInformativo).Sum(d => d.MontoTotal);
+    public decimal TotalFacturadoNeto => FinancialRoundingHelper.Round2(Documentos.Where(d => !d.EsInformativo).Sum(d => d.MontoTotal));
 
     // Resumen de Cotizaciones (Informativo, $0 en caja)
     public int CantidadCotizaciones { get; set; }
@@ -97,13 +99,13 @@ public class ResumenCorteDto
     public decimal TotalDevolucionesEfectivo { get; set; }
 
     // Totales calculados de Flujo de Efectivo
-    public decimal TotalEntradasEfectivo => TotalVentasEfectivo + TotalAbonosEfectivo + TotalIngresosExtras;
-    public decimal TotalSalidasEfectivo => TotalRetiros + TotalGastos + TotalDevolucionesEfectivo;
-    public decimal EfectivoEsperado => FondoInicial + TotalEntradasEfectivo - TotalSalidasEfectivo;
+    public decimal TotalEntradasEfectivo => FinancialRoundingHelper.Round2(TotalVentasEfectivo + TotalAbonosEfectivo + TotalIngresosExtras);
+    public decimal TotalSalidasEfectivo => FinancialRoundingHelper.Round2(TotalRetiros + TotalGastos + TotalDevolucionesEfectivo);
+    public decimal EfectivoEsperado => FinancialRoundingHelper.Round2(FondoInicial + TotalEntradasEfectivo - TotalSalidasEfectivo);
 
     // Arqueo físico y Cuadre
     public decimal? EfectivoContado { get; set; }
-    public decimal? Diferencia => EfectivoContado.HasValue ? (EfectivoContado.Value - EfectivoEsperado) : null;
+    public decimal? Diferencia => EfectivoContado.HasValue ? FinancialRoundingHelper.Round2(EfectivoContado.Value - EfectivoEsperado) : null;
 
     public string EstadoCuadre
     {

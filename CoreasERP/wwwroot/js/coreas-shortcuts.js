@@ -73,6 +73,11 @@ window.CoreasShortcuts = {
                             }
                             return;
                         }
+
+                        // Si fue una pulsación manual de Enter, notificar a .NET (cierre rápido de modal de cambio / atajos)
+                        if (window.DotNet && window.DotNet.invokeMethodAsync) {
+                            window.DotNet.invokeMethodAsync('CoreasERP', 'DispatchGlobalEnter').catch(function () {});
+                        }
                     } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
                         // Si la tecla anterior tardó mucho tiempo, descartar buffer previo (era digitación manual)
                         if (timeDiff > window.CoreasShortcuts.scannerThresholdMs && window.CoreasShortcuts.scannerBuffer.length > 0) {

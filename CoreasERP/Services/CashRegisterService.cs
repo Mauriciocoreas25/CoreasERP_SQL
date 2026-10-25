@@ -231,26 +231,47 @@ public class CashRegisterService : ICashRegisterService
         foreach (var grupo in agrupado)
         {
             string tipo = grupo.Key;
-            bool esCotizacion = tipo.Equals("Cotización", StringComparison.OrdinalIgnoreCase);
+            bool esCotizacion = tipo.Equals("Cotización", StringComparison.OrdinalIgnoreCase) || tipo.Equals("Cotizacion", StringComparison.OrdinalIgnoreCase);
+            bool esRemision = tipo.Contains("Remisión", StringComparison.OrdinalIgnoreCase) || tipo.Contains("Remision", StringComparison.OrdinalIgnoreCase);
             bool esAnticipo = tipo.Equals("Anticipo", StringComparison.OrdinalIgnoreCase);
+            bool esNotaCredito = EsNotaCredito(tipo);
 
             var itemDoc = new ItemTipoDocumentoCorteDto
             {
                 TipoComprobante = tipo,
                 Cantidad = grupo.Count(),
-                MontoTotal = grupo.Sum(v => v.Total),
-                EsInformativo = esCotizacion
+                MontoTotal = FinancialRoundingHelper.Round2(grupo.Sum(v => v.Total)),
+                EsInformativo = esCotizacion || esRemision
             };
 
-            if (esCotizacion)
+            if (esCotizacion || esRemision)
             {
-                // Cotización es presupuesto: $0 efectivo, no afecta caja
+                // Informativo: no aporta ni resta dinero a la gaveta
                 itemDoc.MontoEfectivo = 0m;
                 itemDoc.MontoElectronico = 0m;
                 itemDoc.MontoCreditoCXC = 0m;
 
-                resumen.CantidadCotizaciones += itemDoc.Cantidad;
-                resumen.TotalCotizacionesMonto += itemDoc.MontoTotal;
+                if (esCotizacion)
+                {
+                    resumen.CantidadCotizaciones += itemDoc.Cantidad;
+                    resumen.TotalCotizacionesMonto = FinancialRoundingHelper.Round2(resumen.TotalCotizacionesMonto + itemDoc.MontoTotal);
+                }
+            }
+            else if (esNotaCredito)
+            {
+                // Nota de Crédito: devolución de mercadería / dinero al cliente
+                foreach (var v in grupo)
+                {
+                    if (v.MetodoPago == "Efectivo")
+                    {
+                        itemDoc.MontoEfectivo = FinancialRoundingHelper.Round2(itemDoc.MontoEfectivo + v.Total);
+                        resumen.TotalDevolucionesEfectivo = FinancialRoundingHelper.Round2(resumen.TotalDevolucionesEfectivo + v.Total);
+                    }
+                    else
+                    {
+                        itemDoc.MontoElectronico = FinancialRoundingHelper.Round2(itemDoc.MontoElectronico + v.Total);
+                    }
+                }
             }
             else if (esAnticipo)
             {
@@ -272,53 +293,52 @@ public class CashRegisterService : ICashRegisterService
                         anticipoElectronico += abonado;
                 }
 
-                itemDoc.MontoEfectivo = anticipoEfectivo;
-                itemDoc.MontoElectronico = anticipoElectronico;
-                itemDoc.MontoCreditoCXC = saldoCreditoCXC;
+                itemDoc.MontoEfectivo = FinancialRoundingHelper.Round2(anticipoEfectivo);
+                itemDoc.MontoElectronico = FinancialRoundingHelper.Round2(anticipoElectronico);
+                itemDoc.MontoCreditoCXC = FinancialRoundingHelper.Round2(saldoCreditoCXC);
 
                 resumen.CantidadAnticipos += itemDoc.Cantidad;
-                resumen.AnticiposTotalPedidos += totalPedidos;
-                resumen.AnticiposCobradoEfectivo += anticipoEfectivo;
-                resumen.AnticiposCobradoElectronico += anticipoElectronico;
-                resumen.AnticiposSaldoCXC += saldoCreditoCXC;
+                resumen.AnticiposTotalPedidos = FinancialRoundingHelper.Round2(resumen.AnticiposTotalPedidos + totalPedidos);
+                resumen.AnticiposCobradoEfectivo = FinancialRoundingHelper.Round2(resumen.AnticiposCobradoEfectivo + anticipoEfectivo);
+                resumen.AnticiposCobradoElectronico = FinancialRoundingHelper.Round2(resumen.AnticiposCobradoElectronico + anticipoElectronico);
+                resumen.AnticiposSaldoCXC = FinancialRoundingHelper.Round2(resumen.AnticiposSaldoCXC + saldoCreditoCXC);
 
-                resumen.TotalVentasEfectivo += anticipoEfectivo;
+                resumen.TotalVentasEfectivo = FinancialRoundingHelper.Round2(resumen.TotalVentasEfectivo + anticipoEfectivo);
                 if (anticipoElectronico > 0m)
                 {
-                    // Asignar según método predominante
-                    resumen.TotalVentasTarjetas += anticipoElectronico;
+                    resumen.TotalVentasTarjetas = FinancialRoundingHelper.Round2(resumen.TotalVentasTarjetas + anticipoElectronico);
                 }
-                resumen.TotalVentasCreditoCXC += saldoCreditoCXC;
+                resumen.TotalVentasCreditoCXC = FinancialRoundingHelper.Round2(resumen.TotalVentasCreditoCXC + saldoCreditoCXC);
             }
             else
             {
-                // Ventas regulares
+                // Ventas regulares (Ticket, Factura, Crédito Fiscal, Sujeto Excluido, etc.)
                 foreach (var v in grupo)
                 {
                     if (v.MetodoPago == "Efectivo")
                     {
-                        itemDoc.MontoEfectivo += v.Total;
-                        resumen.TotalVentasEfectivo += v.Total;
+                        itemDoc.MontoEfectivo = FinancialRoundingHelper.Round2(itemDoc.MontoEfectivo + v.Total);
+                        resumen.TotalVentasEfectivo = FinancialRoundingHelper.Round2(resumen.TotalVentasEfectivo + v.Total);
                     }
                     else if (v.MetodoPago == "Tarjeta")
                     {
-                        itemDoc.MontoElectronico += v.Total;
-                        resumen.TotalVentasTarjetas += v.Total;
+                        itemDoc.MontoElectronico = FinancialRoundingHelper.Round2(itemDoc.MontoElectronico + v.Total);
+                        resumen.TotalVentasTarjetas = FinancialRoundingHelper.Round2(resumen.TotalVentasTarjetas + v.Total);
                     }
                     else if (v.MetodoPago == "Transferencia")
                     {
-                        itemDoc.MontoElectronico += v.Total;
-                        resumen.TotalVentasTransferencias += v.Total;
+                        itemDoc.MontoElectronico = FinancialRoundingHelper.Round2(itemDoc.MontoElectronico + v.Total);
+                        resumen.TotalVentasTransferencias = FinancialRoundingHelper.Round2(resumen.TotalVentasTransferencias + v.Total);
                     }
                     else if (v.MetodoPago == "Credito")
                     {
-                        itemDoc.MontoCreditoCXC += v.Total;
-                        resumen.TotalVentasCreditoCXC += v.Total;
+                        itemDoc.MontoCreditoCXC = FinancialRoundingHelper.Round2(itemDoc.MontoCreditoCXC + v.Total);
+                        resumen.TotalVentasCreditoCXC = FinancialRoundingHelper.Round2(resumen.TotalVentasCreditoCXC + v.Total);
                     }
                     else
                     {
-                        itemDoc.MontoEfectivo += v.Total;
-                        resumen.TotalVentasEfectivo += v.Total;
+                        itemDoc.MontoEfectivo = FinancialRoundingHelper.Round2(itemDoc.MontoEfectivo + v.Total);
+                        resumen.TotalVentasEfectivo = FinancialRoundingHelper.Round2(resumen.TotalVentasEfectivo + v.Total);
                     }
                 }
             }
@@ -328,32 +348,34 @@ public class CashRegisterService : ICashRegisterService
 
         // 2. Abonos a Cuentas por Cobrar recibidos en el período
         resumen.CantidadAbonos = abonos.Count;
-        resumen.TotalAbonosEfectivo = abonos.Where(a => a.MetodoPago == "Efectivo").Sum(a => a.Monto);
-        resumen.TotalAbonosElectronico = abonos.Where(a => a.MetodoPago != "Efectivo").Sum(a => a.Monto);
+        resumen.TotalAbonosEfectivo = FinancialRoundingHelper.Round2(abonos.Where(a => a.MetodoPago == "Efectivo").Sum(a => a.Monto));
+        resumen.TotalAbonosElectronico = FinancialRoundingHelper.Round2(abonos.Where(a => a.MetodoPago != "Efectivo").Sum(a => a.Monto));
 
         // 3. Movimientos de Caja
-        resumen.TotalIngresosExtras = movimientos.Where(m => m.Tipo == "Ingreso").Sum(m => m.Monto);
-        resumen.TotalRetiros = movimientos.Where(m => m.Tipo == "Retiro").Sum(m => m.Monto);
-        resumen.TotalGastos = movimientos.Where(m => m.Tipo == "Gasto").Sum(m => m.Monto);
-
-        // Devoluciones si existen notas de crédito en efectivo
-        var notasCreditoEfectivo = ventas
-            .Where(v => (v.TipoComprobante.Contains("Crédito") || v.TipoComprobante.Contains("Credito")) && v.MetodoPago == "Efectivo")
-            .Sum(v => v.Total);
-        resumen.TotalDevolucionesEfectivo = notasCreditoEfectivo;
+        resumen.TotalIngresosExtras = FinancialRoundingHelper.Round2(movimientos.Where(m => m.Tipo == "Ingreso").Sum(m => m.Monto));
+        resumen.TotalRetiros = FinancialRoundingHelper.Round2(movimientos.Where(m => m.Tipo == "Retiro").Sum(m => m.Monto));
+        resumen.TotalGastos = FinancialRoundingHelper.Round2(movimientos.Where(m => m.Tipo == "Gasto").Sum(m => m.Monto));
 
         // 4. Conteo Físico
         if (desgloseFisico != null)
         {
             resumen.DesgloseFisico = desgloseFisico;
-            resumen.EfectivoContado = desgloseFisico.TotalFisicoContado;
+            resumen.EfectivoContado = FinancialRoundingHelper.Round2(desgloseFisico.TotalFisicoContado);
         }
         else if (corte.MontoFinal.HasValue)
         {
-            resumen.EfectivoContado = corte.MontoFinal.Value;
+            resumen.EfectivoContado = FinancialRoundingHelper.Round2(corte.MontoFinal.Value);
         }
 
         return resumen;
+    }
+
+    private static bool EsNotaCredito(string tipo)
+    {
+        if (string.IsNullOrWhiteSpace(tipo)) return false;
+        string t = tipo.Trim().ToLowerInvariant();
+        if (t.Contains("fiscal")) return false; // Credito Fiscal es una venta regular, NO es Nota de Crédito
+        return t.Contains("nota de crédito") || t.Contains("nota de credito") || t.StartsWith("n.crédito") || t.StartsWith("n.credito") || t.StartsWith("nc");
     }
 
     public async Task<(bool Success, string Message, CorteCaja? Corte)> CerrarCajaAsync(int idCorte, decimal montoFinal, decimal? diferencia = null)
@@ -373,12 +395,12 @@ public class CashRegisterService : ICashRegisterService
 
             // Generar el balance integral de efectivo para calcular la diferencia matemática exacta
             var resumen = await GenerarResumenCorteAsync(idCorte, "CORTE Z");
-            decimal esperado = resumen.EfectivoEsperado;
-            decimal diff = diferencia ?? (montoFinal - esperado);
+            decimal esperado = FinancialRoundingHelper.Round2(resumen.EfectivoEsperado);
+            decimal diff = FinancialRoundingHelper.Round2(diferencia ?? (montoFinal - esperado));
 
-            corte.MontoFinal = montoFinal;
+            corte.MontoFinal = FinancialRoundingHelper.Round2(montoFinal);
             corte.Diferencia = diff;
-            corte.TotalVentas = resumen.TotalFacturadoNeto;
+            corte.TotalVentas = FinancialRoundingHelper.Round2(resumen.TotalFacturadoNeto);
             corte.FechaCierre = DateTime.Now;
             corte.Estado = "Cerrada";
 

@@ -11,7 +11,7 @@ public class PurchaseItemDto
     public string Nombre { get; set; } = string.Empty;
     public decimal Cantidad { get; set; } = 1.000m;
     public decimal PrecioCompra { get; set; }
-    public decimal Subtotal => Cantidad * PrecioCompra;
+    public decimal Subtotal => FinancialRoundingHelper.Round2(Cantidad * PrecioCompra);
 }
 
 public interface IPurchaseService
@@ -136,7 +136,7 @@ public class PurchaseService : IPurchaseService
         if (items == null || !items.Any())
             return (false, "Debe agregar al menos un producto a la compra.", null);
 
-        decimal total = items.Sum(i => i.Subtotal);
+        decimal total = FinancialRoundingHelper.Round2(items.Sum(i => i.Subtotal));
 
         await using var context = await _contextFactory.CreateDbContextAsync();
         var strategy = context.Database.CreateExecutionStrategy();
@@ -169,9 +169,9 @@ public class PurchaseService : IPurchaseService
                     {
                         IdCompra = compra.IdCompra,
                         IdProducto = item.IdProducto,
-                        Cantidad = item.Cantidad,
-                        PrecioCompra = item.PrecioCompra,
-                        Subtotal = item.Subtotal
+                        Cantidad = FinancialRoundingHelper.Round3(item.Cantidad),
+                        PrecioCompra = FinancialRoundingHelper.Round4(item.PrecioCompra),
+                        Subtotal = FinancialRoundingHelper.Round2(item.Subtotal)
                     };
                     await context.DetalleCompras.AddAsync(detalle);
 
@@ -179,26 +179,26 @@ public class PurchaseService : IPurchaseService
                     var prod = await context.Productos.FindAsync(item.IdProducto);
                     if (prod != null)
                     {
-                        prod.Stock += item.Cantidad;
+                        prod.Stock = FinancialRoundingHelper.Round3(prod.Stock + item.Cantidad);
 
                         // Detección automática: Solo si hay modificación en el costo unitario
                         if (item.PrecioCompra != prod.PrecioCompra)
                         {
                             decimal margen = prod.MargenExcepcion > 0
                                 ? prod.MargenExcepcion
-                                : (prod.PrecioCompra > 0 ? Math.Round(((prod.PrecioVenta - prod.PrecioCompra) / prod.PrecioCompra) * 100m, 2) : 30.00m);
+                                : (prod.PrecioCompra > 0 ? FinancialRoundingHelper.Round2(((prod.PrecioVenta - prod.PrecioCompra) / prod.PrecioCompra) * 100m) : 30.00m);
 
                             if (margen <= 0) margen = 30.00m;
 
-                            decimal precioVentaSugerido = Math.Round(item.PrecioCompra * (1m + (margen / 100m)), 2);
+                            decimal precioVentaSugerido = FinancialRoundingHelper.Round4(item.PrecioCompra * (1m + (margen / 100m)));
 
                             var cambioPrecio = new CambioPrecio
                             {
                                 IdProducto = prod.IdProducto,
                                 IdCompra = compra.IdCompra,
-                                CostoAnterior = prod.PrecioCompra,
-                                CostoNuevo = item.PrecioCompra,
-                                PrecioVentaAnterior = prod.PrecioVenta,
+                                CostoAnterior = FinancialRoundingHelper.Round4(prod.PrecioCompra),
+                                CostoNuevo = FinancialRoundingHelper.Round4(item.PrecioCompra),
+                                PrecioVentaAnterior = FinancialRoundingHelper.Round4(prod.PrecioVenta),
                                 PrecioVentaNuevo = precioVentaSugerido,
                                 MargenPorcentaje = margen,
                                 Motivo = $"Modificación de costo en Compra Factura {compra.NumFactura}",
@@ -208,7 +208,11 @@ public class PurchaseService : IPurchaseService
                             await context.CambiosPrecio.AddAsync(cambioPrecio);
                         }
 
-                        prod.PrecioCompra = item.PrecioCompra; // Actualizar costo de adquisición
+                        prod.PrecioCompra = FinancialRoundingHelper.Round4(item.PrecioCompra); // Actualizar costo de adquisición
+                        if (prod.CantidadPorEmpaque.HasValue && prod.CantidadPorEmpaque.Value > 1)
+                        {
+                            prod.CostoGranel = FinancialRoundingHelper.Round4(prod.PrecioCompra / prod.CantidadPorEmpaque.Value);
+                        }
                     }
                 }
 
@@ -250,7 +254,7 @@ public class PurchaseService : IPurchaseService
                     var prod = await context.Productos.FindAsync(item.IdProducto);
                     if (prod != null)
                     {
-                        prod.Stock = Math.Max(0m, prod.Stock - item.Cantidad);
+                        prod.Stock = FinancialRoundingHelper.Round3(Math.Max(0m, prod.Stock - item.Cantidad));
                     }
                 }
 

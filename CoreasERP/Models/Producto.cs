@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using CoreasERP.Services;
 
 namespace CoreasERP.Models;
 
@@ -30,12 +31,12 @@ public class Producto
     public ICollection<AjusteInventario> AjustesInventario { get; set; } = new List<AjusteInventario>();
 
     [NotMapped]
-    public decimal MargenGanancia => PrecioCompra > 0 ? Math.Round(((PrecioVenta - PrecioCompra) / PrecioCompra) * 100m, 2) : 0m;
+    public decimal MargenGanancia => PrecioCompra > 0 ? FinancialRoundingHelper.Round2(((PrecioVenta - PrecioCompra) / PrecioCompra) * 100m) : 0m;
 
     [NotMapped]
     public decimal CostoEfectivoGranel => (CostoGranel.HasValue && CostoGranel.Value > 0)
         ? CostoGranel.Value
-        : (CantidadPorEmpaque.HasValue && CantidadPorEmpaque.Value > 0 ? Math.Round(PrecioCompra / CantidadPorEmpaque.Value, 4) : PrecioCompra);
+        : (CantidadPorEmpaque.HasValue && CantidadPorEmpaque.Value > 0 ? FinancialRoundingHelper.Round4(PrecioCompra / CantidadPorEmpaque.Value) : PrecioCompra);
 
     [NotMapped]
     public decimal MargenGananciaGranel
@@ -44,7 +45,7 @@ public class Producto
         {
             decimal c = CostoEfectivoGranel;
             if (c <= 0 || !PrecioGranel.HasValue || PrecioGranel.Value <= 0) return 0m;
-            return Math.Round(((PrecioGranel.Value - c) / c) * 100m, 2);
+            return FinancialRoundingHelper.Round2(((PrecioGranel.Value - c) / c) * 100m);
         }
     }
 }

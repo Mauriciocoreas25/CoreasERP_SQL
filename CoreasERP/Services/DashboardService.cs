@@ -219,8 +219,7 @@ public class DashboardService : IDashboardService
         int conteoCompras = await comprasQuery.CountAsync();
 
         // Base y Crédito Fiscal (13% IVA en Compras)
-        decimal baseCreditoFiscal = totalCompras > 0 ? Math.Round(totalCompras / 1.13m, 2) : 0.00m;
-        decimal creditoFiscal = totalCompras - baseCreditoFiscal;
+        var (baseCreditoFiscal, creditoFiscal) = totalCompras > 0 ? FinancialRoundingHelper.DesglosarIvaIncluido(totalCompras) : (0.00m, 0.00m);
 
         var libroIva = new LibroIvaDto
         {

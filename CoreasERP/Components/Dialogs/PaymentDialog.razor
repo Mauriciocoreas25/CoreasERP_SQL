@@ -13,9 +13,9 @@
 
             <div class="p-4">
                 <!-- Total a Cobrar Destacado -->
-                <div class="text-center p-3 mb-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-25">
-                    <div class="text-muted small fw-semibold text-uppercase">Total a Cobrar</div>
-                    <div class="fs-1 fw-bold text-success font-monospace">$@Total.ToString("F2")</div>
+                <div class="text-center p-3 mb-3 rounded-3 shadow-sm" style="background-color: #f0fdf4 !important; border: 2.5px solid #16a34a !important;">
+                    <div class="text-uppercase fw-bold" style="color: #166534; font-size: 12px; letter-spacing: 0.8px;">Total a Cobrar</div>
+                    <div class="font-monospace fw-bolder my-1" style="font-size: 2.4rem; color: #14532d !important; line-height: 1.1;">$@Total.ToString("F2")</div>
                 </div>
 
                 <!-- Método de Pago -->
@@ -47,17 +47,17 @@
                 {
                     <!-- Pago con efectivo con Foco Automático y Confirmación por Enter / F10 -->
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">
+                        <label class="form-label small fw-bold text-dark">
                             @(EsAnticipo ? "¿Monto del anticipo / abono inicial?" : "¿Con cuánto paga el cliente?")
                         </label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text fw-bold">$</span>
+                        <div class="input-group input-group-lg shadow-sm">
+                            <span class="input-group-text fw-bold" style="background-color: #f8fafc; color: #14532d; border: 2.5px solid #16a34a; border-right: none;">$</span>
                             <input @ref="inputMontoRef"
                                    type="number" 
                                    step="0.01" 
                                    min="0" 
-                                   class="form-control form-control-lg fw-bold text-success font-monospace" 
-                                   style="font-size: 1.6rem; border: 2px solid #15803d;"
+                                   class="form-control form-control-lg fw-bold font-monospace" 
+                                   style="font-size: 1.8rem; border: 2.5px solid #16a34a; color: #14532d !important; background-color: #ffffff !important;"
                                    @bind="PagoCon" 
                                    @bind:event="oninput" 
                                    @onkeydown="HandleInputMontoKeyDown"
@@ -92,14 +92,14 @@
                     {
                         @if ((PagoCon ?? 0m) < Total)
                         {
-                            <div class="p-3 rounded-3 bg-light border">
+                            <div class="p-3 rounded-3 border shadow-sm" style="background-color: #f8fafc; border-color: #cbd5e1 !important;">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="fw-semibold text-dark">Anticipo / Abono Inicial:</span>
-                                    <span class="fs-5 fw-bold font-monospace text-success">$@((PagoCon ?? 0m).ToString("F2"))</span>
+                                    <span class="fs-5 fw-bold font-monospace" style="color: #15803d;">$@((PagoCon ?? 0m).ToString("F2"))</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center border-top pt-1">
                                     <span class="fw-semibold text-dark">Saldo por Cobrar (Crédito):</span>
-                                    <span class="fs-4 fw-bold font-monospace text-danger">$@((Total - (PagoCon ?? 0m)).ToString("F2"))</span>
+                                    <span class="fs-4 fw-bold font-monospace" style="color: #b91c1c;">$@((Total - (PagoCon ?? 0m)).ToString("F2"))</span>
                                 </div>
                                 <div class="small text-muted mt-1" style="font-size: 11px;">
                                     * El saldo restante quedará registrado automáticamente como <strong>Cuenta por Cobrar</strong>.
@@ -108,20 +108,22 @@
                         }
                         else
                         {
-                            <div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 text-success">
+                            <div class="p-3 rounded-3 shadow-sm" style="background-color: #dcfce7 !important; border: 2.5px solid #22c55e !important;">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-semibold">Cambio a Devolver:</span>
-                                    <span class="fs-3 fw-bold font-monospace">${Cambio:F2}</span>
+                                    <span class="fw-bold" style="color: #14532d; font-size: 14px;">Cambio a Devolver:</span>
+                                    <span class="font-monospace fw-bolder" style="font-size: 2.1rem; color: #14532d !important;">${Cambio:F2}</span>
                                 </div>
                             </div>
                         }
                     }
                     else
                     {
-                        <div class="p-3 rounded-3 @(IsMontoInsuficiente ? "bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger" : "bg-success bg-opacity-10 border border-success border-opacity-25 text-success")">
+                        <div class="p-3 rounded-3 shadow-sm" style="background-color: @(IsMontoInsuficiente ? "#fee2e2" : "#dcfce7") !important; border: 2.5px solid @(IsMontoInsuficiente ? "#ef4444" : "#22c55e") !important;">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-semibold">@(IsMontoInsuficiente ? "Monto Insuficiente:" : "Cambio a Devolver:")</span>
-                                <span class="fs-3 fw-bold font-monospace">
+                                <span class="fw-bold" style="color: @(IsMontoInsuficiente ? "#991b1b" : "#14532d"); font-size: 14px;">
+                                    @(IsMontoInsuficiente ? "Monto Insuficiente:" : "Cambio a Devolver:")
+                                </span>
+                                <span class="font-monospace fw-bolder" style="font-size: @(IsMontoInsuficiente ? "1.6rem" : "2.2rem"); color: @(IsMontoInsuficiente ? "#b91c1c" : "#14532d") !important;">
                                     @(IsMontoInsuficiente ? $"Faltan ${(Total - (PagoCon ?? 0m)):F2}" : $"${Cambio:F2}")
                                 </span>
                             </div>
@@ -177,7 +179,7 @@
     private bool wasOpen = false;
 
     private bool IsMontoInsuficiente => !EsAnticipo && MetodoPago == "Efectivo" && (PagoCon ?? 0m) < Total;
-    private decimal Cambio => (PagoCon ?? 0m) >= Total ? ((PagoCon ?? 0m) - Total) : 0.00m;
+    private decimal Cambio => (PagoCon ?? 0m) >= Total ? FinancialRoundingHelper.Round2((PagoCon ?? 0m) - Total) : 0.00m;
 
     protected override void OnParametersSet()
     {
@@ -255,7 +257,7 @@
     {
         if (isProcessing) return;
 
-        decimal montoPagar = PagoCon ?? (EsAnticipo ? 0m : Total);
+        decimal montoPagar = FinancialRoundingHelper.Round2(PagoCon ?? (EsAnticipo ? 0m : Total));
         if (montoPagar < 0)
         {
             ErrorMessage = "El monto ingresado no puede ser menor a cero.";

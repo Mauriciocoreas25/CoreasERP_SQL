@@ -19,9 +19,9 @@ public class CartItemDto
     public decimal CantidadPorEmpaque { get; set; } = 1.00m;
     public string UnidadMedida { get; set; } = "Unidad";
     public decimal CostoUnitario { get; set; } = 0.00m;
-    public decimal Subtotal => (Cantidad * Precio) - Descuento;
-    public decimal CostoSubtotal => Math.Round(Cantidad * CostoUnitario, 2);
-    public decimal CantidadBaseStock => (EsGranel && CantidadPorEmpaque > 1) ? (Cantidad / CantidadPorEmpaque) : Cantidad;
+    public decimal Subtotal => FinancialRoundingHelper.Round2((Cantidad * Precio) - Descuento);
+    public decimal CostoSubtotal => FinancialRoundingHelper.Round2(Cantidad * CostoUnitario);
+    public decimal CantidadBaseStock => (EsGranel && CantidadPorEmpaque > 1) ? FinancialRoundingHelper.Round3(Cantidad / CantidadPorEmpaque) : FinancialRoundingHelper.Round3(Cantidad);
 }
 
 public interface IPosService
@@ -73,12 +73,14 @@ public class PosService : IPosService
         if (items == null || !items.Any())
             return (false, "El carrito de compras está vacío.", null);
 
-        decimal total = items.Sum(i => i.Subtotal);
+        decimal total = FinancialRoundingHelper.Round2(items.Sum(i => i.Subtotal));
         if (total <= 0)
             return (false, "El total de la venta debe ser mayor a cero.", null);
 
         bool esAnticipo = tipoComprobante.Equals("Anticipo", StringComparison.OrdinalIgnoreCase);
         bool esCotizacion = tipoComprobante.Equals("Cotización", StringComparison.OrdinalIgnoreCase);
+
+        pagoCon = FinancialRoundingHelper.Round2(pagoCon);
 
         if (!esAnticipo && !esCotizacion && metodoPago == "Efectivo" && pagoCon < total)
         {
@@ -127,12 +129,11 @@ public class PosService : IPosService
                 }
             }
 
-            // 2. Cálculos financieros (IVA 13% incluido en precio)
-            decimal subtotal = Math.Round(total / 1.13m, 2);
-            decimal impuesto = total - subtotal;
-            decimal montoAbonado = esAnticipo ? Math.Min(pagoCon, total) : (esCotizacion ? 0m : (metodoPago == "Efectivo" ? total : total));
-            decimal saldoPendiente = esAnticipo ? Math.Max(0m, total - pagoCon) : 0m;
-            decimal? cambio = (!esCotizacion && metodoPago == "Efectivo" && pagoCon > total) ? (pagoCon - total) : 0.00m;
+            // 2. Cálculos financieros (IVA 13% incluido en precio, redondeo exacto Hacienda)
+            var (subtotal, impuesto) = FinancialRoundingHelper.DesglosarIvaIncluido(total);
+            decimal montoAbonado = esAnticipo ? FinancialRoundingHelper.Round2(Math.Min(pagoCon, total)) : (esCotizacion ? 0m : total);
+            decimal saldoPendiente = esAnticipo ? FinancialRoundingHelper.Round2(Math.Max(0m, total - pagoCon)) : 0m;
+            decimal? cambio = (!esCotizacion && metodoPago == "Efectivo" && pagoCon > total) ? FinancialRoundingHelper.Round2(pagoCon - total) : 0.00m;
 
             // 3. Generar correlativo DTE / Comprobante
             var config = await context.ConfiguracionNegocio.FirstOrDefaultAsync();
@@ -216,10 +217,10 @@ public class PosService : IPosService
                 {
                     IdVenta = venta.IdVenta,
                     IdProducto = item.IdProducto,
-                    Cantidad = item.Cantidad,
-                    Precio = item.Precio,
-                    Descuento = item.Descuento,
-                    Subtotal = item.Subtotal
+                    Cantidad = FinancialRoundingHelper.Round3(item.Cantidad),
+                    Precio = FinancialRoundingHelper.Round4(item.Precio),
+                    Descuento = FinancialRoundingHelper.Round2(item.Descuento),
+                    Subtotal = FinancialRoundingHelper.Round2(item.Subtotal)
                 };
                 await context.DetalleVentas.AddAsync(detalle);
             }
@@ -268,7 +269,7 @@ public class PosService : IPosService
                 {
                     // Para anticipos en efectivo ingresa únicamente lo pagado físicamente, no el crédito total
                     decimal ingresoEfectivo = esAnticipo ? montoAbonado : total;
-                    corteActivo.TotalVentas += ingresoEfectivo;
+                    corteActivo.TotalVentas = FinancialRoundingHelper.Round2(corteActivo.TotalVentas + ingresoEfectivo);
                 }
             }
 
@@ -372,7 +373,7 @@ public class PosService : IPosService
                     decimal factor = (producto.CantidadPorEmpaque.HasValue && producto.CantidadPorEmpaque.Value > 1 && producto.PrecioGranel.HasValue && detalle.Precio == producto.PrecioGranel.Value)
                         ? producto.CantidadPorEmpaque.Value
                         : 1m;
-                    producto.Stock += (detalle.Cantidad / factor);
+                    producto.Stock = FinancialRoundingHelper.Round3(producto.Stock + (detalle.Cantidad / factor));
                 }
             }
 
@@ -417,7 +418,7 @@ public class PosService : IPosService
 
                 if (corteActivo != null && corteActivo.TotalVentas >= venta.Total)
                 {
-                    corteActivo.TotalVentas -= venta.Total;
+                    corteActivo.TotalVentas = FinancialRoundingHelper.Round2(corteActivo.TotalVentas - venta.Total);
                 }
             }
 
@@ -510,12 +511,12 @@ public class PosService : IPosService
 
                 // 2. Pérdida contable real a costo:
                 // Cantidad física dada de baja (item.Cantidad) x costo unitario de esa presentación (costoUnitario)
-                decimal costoLinea = Math.Round(item.Cantidad * costoUnitario, 2);
-                totalCostoMerma += costoLinea;
+                decimal costoLinea = FinancialRoundingHelper.Round2(item.Cantidad * costoUnitario);
+                totalCostoMerma = FinancialRoundingHelper.Round2(totalCostoMerma + costoLinea);
 
                 // 3. Deducción del inventario físico base (prod.Stock se almacena en empaques base):
                 decimal cantBaseDeducir = item.CantidadBaseStock;
-                prod.Stock = Math.Max(0m, prod.Stock - cantBaseDeducir);
+                prod.Stock = FinancialRoundingHelper.Round3(Math.Max(0m, prod.Stock - cantBaseDeducir));
 
                 var merma = new Merma
                 {

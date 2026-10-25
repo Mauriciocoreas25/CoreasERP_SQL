@@ -68,6 +68,7 @@ public class CreditService : ICreditService
         string metodoPago,
         string? notas)
     {
+        monto = FinancialRoundingHelper.Round2(monto);
         if (monto <= 0)
             return (false, "El monto del abono debe ser mayor a cero.", null);
 
@@ -107,7 +108,7 @@ public class CreditService : ICreditService
 
             await context.Abonos.AddAsync(abono);
 
-            cuenta.SaldoPendiente -= monto;
+            cuenta.SaldoPendiente = FinancialRoundingHelper.Round2(cuenta.SaldoPendiente - monto);
             if (cuenta.SaldoPendiente <= 0)
             {
                 cuenta.SaldoPendiente = 0;

@@ -9,6 +9,7 @@ public static class KeyboardBridgeService
     public static event Action? OnF6Pressed;
     public static event Action? OnF10Pressed;
     public static event Action? OnSpacePressed;
+    public static event Action? OnEnterPressed;
     public static event Action<int>? OnFunctionKeyPressed;
     public static event Action<string>? OnShortcutPressed;
     public static event Action<string>? OnBarcodeScanned;
@@ -57,6 +58,12 @@ public static class KeyboardBridgeService
     public static void DispatchGlobalSpace()
     {
         OnSpacePressed?.Invoke();
+    }
+
+    [JSInvokable("DispatchGlobalEnter")]
+    public static void DispatchGlobalEnter()
+    {
+        OnEnterPressed?.Invoke();
     }
 
     [JSInvokable("DispatchBarcodeScanned")]

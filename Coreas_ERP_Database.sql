@@ -80,10 +80,10 @@ CREATE TABLE [dbo].[CambiosPrecio](
 	[IdCambioPrecio] [int] IDENTITY(1,1) NOT NULL,
 	[IdProducto] [int] NOT NULL,
 	[IdCompra] [int] NULL,
-	[CostoAnterior] [decimal](18, 2) NOT NULL,
-	[CostoNuevo] [decimal](18, 2) NOT NULL,
-	[PrecioVentaAnterior] [decimal](18, 2) NOT NULL,
-	[PrecioVentaNuevo] [decimal](18, 2) NOT NULL,
+	[CostoAnterior] [decimal](18, 4) NOT NULL,
+	[CostoNuevo] [decimal](18, 4) NOT NULL,
+	[PrecioVentaAnterior] [decimal](18, 4) NOT NULL,
+	[PrecioVentaNuevo] [decimal](18, 4) NOT NULL,
 	[MargenPorcentaje] [decimal](18, 2) NOT NULL,
 	[Motivo] [nvarchar](255) COLLATE Modern_Spanish_CI_AS NOT NULL,
 	[FechaHora] [datetime] NOT NULL,
@@ -359,8 +359,8 @@ CREATE TABLE [dbo].[DetalleCompras](
 	[IdCompra] [int] NOT NULL,
 	[IdProducto] [int] NOT NULL,
 	[Cantidad] [decimal](12, 3) NOT NULL,
-	[PrecioCompra] [decimal](10, 2) NOT NULL,
-	[Subtotal] [decimal](10, 2) NOT NULL,
+	[PrecioCompra] [decimal](18, 4) NOT NULL,
+	[Subtotal] [decimal](18, 2) NOT NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[IdDetalleCompra] ASC
@@ -381,8 +381,8 @@ CREATE TABLE [dbo].[DetalleOrdenesWeb](
 	[IdOrden] [int] NOT NULL,
 	[IdProducto] [int] NOT NULL,
 	[Cantidad] [decimal](12, 3) NOT NULL,
-	[Precio] [decimal](10, 2) NOT NULL,
-	[Subtotal] [decimal](10, 2) NOT NULL,
+	[Precio] [decimal](18, 4) NOT NULL,
+	[Subtotal] [decimal](18, 2) NOT NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[IdDetalleOrden] ASC
@@ -403,9 +403,9 @@ CREATE TABLE [dbo].[DetalleVentas](
 	[IdVenta] [int] NOT NULL,
 	[IdProducto] [int] NOT NULL,
 	[Cantidad] [decimal](12, 3) NOT NULL,
-	[Precio] [decimal](10, 2) NOT NULL,
-	[Descuento] [decimal](10, 2) NOT NULL,
-	[Subtotal] [decimal](10, 2) NOT NULL,
+	[Precio] [decimal](18, 4) NOT NULL,
+	[Descuento] [decimal](18, 2) NOT NULL,
+	[Subtotal] [decimal](18, 2) NOT NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[IdDetalle] ASC
@@ -480,13 +480,13 @@ CREATE TABLE [dbo].[Productos](
 	[Codigo] [varchar](100) COLLATE Modern_Spanish_CI_AS NOT NULL,
 	[Nombre] [varchar](150) COLLATE Modern_Spanish_CI_AS NOT NULL,
 	[Descripcion] [nvarchar](max) COLLATE Modern_Spanish_CI_AS NULL,
-	[PrecioCompra] [decimal](10, 2) NOT NULL,
-	[PrecioVenta] [decimal](10, 2) NOT NULL,
+	[PrecioCompra] [decimal](18, 4) NOT NULL,
+	[PrecioVenta] [decimal](18, 4) NOT NULL,
 	[Stock] [decimal](12, 3) NOT NULL,
 	[StockMinimo] [decimal](12, 3) NOT NULL,
 	[EsGranel] [bit] NOT NULL DEFAULT(0),
 	[UnidadMedida] [varchar](30) COLLATE Modern_Spanish_CI_AS NOT NULL DEFAULT('Unidad'),
-	[PrecioGranel] [decimal](10, 2) NULL,
+	[PrecioGranel] [decimal](18, 4) NULL,
 	[Imagen] [varchar](255) COLLATE Modern_Spanish_CI_AS NULL,
 	[Estado] [bit] NOT NULL,
 	[FechaCreacion] [datetime2](7) NOT NULL,

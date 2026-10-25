@@ -247,7 +247,9 @@
                                         <div class="fw-bold text-dark" title="Precio Unitario / Individual">$@prod.PrecioVenta.ToString("F2")</div>
                                         @if (prod.PrecioGranel.HasValue && prod.PrecioGranel.Value > 0)
                                         {
-                                            <div class="badge bg-success bg-opacity-25 text-success border border-success px-1" style="font-size: 9.5px;" title="Precio de venta a granel / caja">
+                                            <div class="badge px-2 py-0.5 fw-bold shadow-sm" 
+                                                 style="background-color: #dcfce7 !important; color: #14532d !important; border: 1px solid #86efac !important; font-size: 9.5px;" 
+                                                 title="Precio de venta a granel / caja">
                                                 @(prod.UnidadMedida == "Caja" ? "Caja" : (prod.UnidadMedida == "Sobre" ? "Sobre" : (prod.UnidadMedida == "Paquete" ? "Paq" : (prod.UnidadMedida == "Libra" ? "Libra" : "Granel")))): $@prod.PrecioGranel.Value.ToString("F2")
                                             </div>
                                         }
@@ -259,8 +261,8 @@
 
                                     <!-- Stock Físico -->
                                     <td class="text-center">
-                                        <span class="badge px-2 py-1 @(prod.Stock <= 0 ? "bg-danger bg-opacity-10 text-danger border border-danger" : (prod.Stock <= prod.StockMinimo ? "bg-warning bg-opacity-10 text-warning border border-warning" : "bg-success bg-opacity-10 text-success border border-success"))"
-                                              style="font-size: 12px; font-weight: 700;">
+                                        <span class="badge px-2.5 py-1 fw-bold shadow-sm"
+                                              style="font-size: 12px; @(prod.Stock <= 0 ? "background-color: #fee2e2 !important; color: #991b1b !important; border: 1.5px solid #f87171 !important;" : (prod.Stock <= prod.StockMinimo ? "background-color: #fef9c3 !important; color: #854d0e !important; border: 1.5px solid #facc15 !important;" : "background-color: #dcfce7 !important; color: #14532d !important; border: 1.5px solid #86efac !important;"))">
                                             @prod.Stock.ToString("G29") @(string.Equals(prod.UnidadMedida, "Libra", StringComparison.OrdinalIgnoreCase) ? "lb" : (string.Equals(prod.UnidadMedida, "Kilogramo", StringComparison.OrdinalIgnoreCase) ? "kg" : (string.Equals(prod.UnidadMedida, "Gramo", StringComparison.OrdinalIgnoreCase) ? "g" : "uds")))
                                         </span>
                                         @if (prod.EsGranel)
@@ -571,7 +573,7 @@ else
                                         <div class="col-12">
                                             <div class="p-3 rounded-3 bg-white border shadow-sm">
                                                 <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold">
+                                                    <span class="badge px-2.5 py-1 fw-bold shadow-sm" style="background-color: #dcfce7 !important; color: #14532d !important; border: 1px solid #86efac !important;">
                                                         CONFIGURACIÓN DE VENTA FRACCIONADA / A GRANEL
                                                     </span>
                                                     <span class="text-muted small" style="font-size: 11px;">
